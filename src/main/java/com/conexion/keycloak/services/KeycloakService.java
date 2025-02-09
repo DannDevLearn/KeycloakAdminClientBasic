@@ -4,12 +4,16 @@ import com.conexion.keycloak.dto.UserRequestDTO;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.keycloak.admin.client.Keycloak;
+import org.keycloak.admin.client.resource.RealmResource;
+import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.representations.idm.CredentialRepresentation;
+import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
+import java.util.List;
 
 @Service
 @Slf4j
@@ -43,11 +47,29 @@ public class KeycloakService {
 
 
         try (Response response = keycloak.realm(realm).users().create(user)) {
-            if (response.getStatus() == 201)
+            if (response.getStatus() == 201) {
                 log.info("User created successfully");
+                String userId = response.getLocation().getPath().replaceAll(".*/([^/]+)$", "$1");
+                log.info("ID del usuario: {}", userId);
 
+                // Asignar el rol "USER" automáticamente
+                assignDefaultRole(userId, "USER");
+            }
         } catch (Exception e) {
             log.info(e.getMessage());
+        }
+    }
+
+    private void assignDefaultRole(String userId, String roleName) {
+        RealmResource realmResource = keycloak.realm(realm);
+        RoleRepresentation role = realmResource.roles().get(roleName).toRepresentation();
+
+        if (role != null) {
+            UserResource userResource = realmResource.users().get(userId);
+            userResource.roles().realmLevel().add(Collections.singletonList(role));
+            log.info("Rol '{}' asignado automáticamente al usuario con ID: {}", roleName, userId);
+        } else {
+            log.warn("El rol '{}' no existe en el Realm", roleName);
         }
     }
 
