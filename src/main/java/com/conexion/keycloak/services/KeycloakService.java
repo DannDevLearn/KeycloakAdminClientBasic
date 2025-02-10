@@ -13,7 +13,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
-import java.util.List;
 
 @Service
 @Slf4j
@@ -35,7 +34,7 @@ public class KeycloakService {
         user.setFirstName(userRequestDTO.getFirstName());
         user.setLastName(userRequestDTO.getLastName());
         user.setEnabled(true);
-        user.setEmailVerified(true);
+        user.setEmailVerified(false);
 
         CredentialRepresentation credentials = new CredentialRepresentation();
         credentials.setType(CredentialRepresentation.PASSWORD);
@@ -54,9 +53,23 @@ public class KeycloakService {
 
                 // Asignar el rol "USER" automáticamente
                 assignDefaultRole(userId, "USER");
+                sendVerificationEmail(userId);
             }
         } catch (Exception e) {
             log.info(e.getMessage());
+        }
+    }
+
+    private void sendVerificationEmail(String userId) {
+        try {
+            RealmResource realmResource = keycloak.realm(realm);
+            UserResource userResource = realmResource.users().get(userId);
+
+            // Enviar correo de verificación
+            userResource.sendVerifyEmail();
+            log.info("Correo de verificación enviado al usuario con ID: {}", userId);
+        } catch (Exception e) {
+            log.error("Error al enviar el correo de verificación: {}", e.getMessage(), e);
         }
     }
 
